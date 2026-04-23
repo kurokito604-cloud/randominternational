@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Receiver | Low Latency</title>
+    <script src="https://unpkg.com"></script>
+    <style>
+        :root { --bg: #0f0f0f; --accent: #00ff41; }
+        body { 
+            margin: 0; background: var(--bg); color: white; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden;
+        }
+        .container { text-align: center; z-index: 10; }
+        h1 { font-weight: 300; letter-spacing: 2px; color: var(--accent); margin-bottom: 30px; }
+        
+        .input-group { background: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input { 
+            background: #222; border: 1px solid #444; color: white; padding: 12px; 
+            border-radius: 6px; width: 250px; outline: none; transition: 0.3s; font-family: monospace;
+        }
+        input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(0, 255, 65, 0.2); }
+        
+        button { 
+            background: var(--accent); color: black; border: none; padding: 12px 25px; 
+            border-radius: 6px; cursor: pointer; font-weight: bold; margin-left: 10px; transition: 0.2s;
+        }
+        button:hover { transform: scale(1.05); filter: brightness(1.1); }
+        
+        #video-container { 
+            display: none; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; background: black; 
+        }
+        video { width: 100%; height: 100%; object-fit: contain; }
+        
+        .stats { position: absolute; top: 10px; left: 10px; font-size: 12px; color: rgba(255,255,255,0.5); pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="setup">
+        <h1>CLOUD STREAM</h1>
+        <div class="input-group">
+            <input type="text" id="peerId" placeholder="Введите ID из программы...">
+            <button id="connectBtn">ПОДКЛЮЧИТЬСЯ</button>
+        </div>
+        <p style="color: #666; font-size: 14px; margin-top: 15px;">Target: 720p @ 60 FPS (H.264 Hardware)</p>
+    </div>
+
+    <div id="video-container">
+        <div class="stats" id="stats">Прием потока...</div>
+        <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+
+    <script>
+        const peer = new Peer();
+        const connectBtn = document.getElementById('connectBtn');
+        const peerIdInput = document.getElementById('peerId');
+        const setupDiv = document.getElementById('setup');
+        const videoContainer = document.getElementById('video-container');
+        const videoElement = document.getElementById('remoteVideo');
+        const stats = document.getElementById('stats');
+
+        peer.on('open', (id) => console.log('Ваш ID в сети:', id));
+
+        connectBtn.onclick = () => {
+            const remoteId = peerIdInput.value.trim();
+            if (!remoteId) return alert('Введите ID!');
+
+            // Соединяемся (пустой поток в ответ, так как мы только смотрим)
+            const call = peer.call(remoteId, new MediaStream());
+            
+            stats.innerText = "Установка соединения...";
+
+            call.on('stream', (remoteStream) => {
+                console.log('Поток получен!');
+                setupDiv.style.display = 'none';
+                videoContainer.style.display = 'block';
+                videoElement.srcObject = remoteStream;
+                
+                stats.innerText = "LIVE | 720p 60FPS";
+            });
+
+            call.on('error', (err) => {
+                alert('Ошибка связи: ' + err);
+                location.reload();
+            });
+        };
+
+        // Авто-скрытие курсора в полноэкранном режиме
+        let timer;
+        document.addEventListener('mousemove', () => {
+            document.body.style.cursor = 'default';
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                document.body.style.cursor = 'none';
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
